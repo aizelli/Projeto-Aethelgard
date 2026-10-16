@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c19e0859ca508af409eb534f559c93c4, type: 3}
+  m_Name: 0100201-CarrionCrawler
+  m_EditorClassIdentifier: Assembly-CSharp::MonstroData
+  idLocal: 100201
+  nomeCarta: Carrion Crawler
+  elemento: 2
+  tier: 1
+  evoluiPara: {fileID: 0}
+  arteInventario: {fileID: 0}
+  spriteToken: {fileID: 21300000, guid: 4505d00f66d303a41bc8bf7d833248a5, type: 3}
+  hpBase: 100
+  danoBase: 3
+  velocidadeMovimento: 3
+  alcanceAtaque: 3.5
+  tempoEntreAtaques: 1.5
+  multiplicadorHpPorNivel: 1.2
+  multiplicadorDanoPorNivel: 1.15
+  papelTatico: 1
+  paMaximo: 100
+  paGeradoPorAtaque: 10
+  habilidadesAtivas: []
