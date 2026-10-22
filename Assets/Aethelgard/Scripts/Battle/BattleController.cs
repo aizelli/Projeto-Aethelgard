@@ -3,7 +3,7 @@ using UnityEngine;
 
 public class BattleController : MonoBehaviour
 {
-    public enum EstadoBatalha { Marchando, Combate, VitoriaOnda, TransicaoFase }
+    public enum EstadoBatalha { Marchando, Combate, VitoriaOnda, Derrota, TransicaoFase }
     public EstadoBatalha estadoAtual;
 
     [Header("Gerenciadores")]
@@ -15,6 +15,8 @@ public class BattleController : MonoBehaviour
     public BiomeData biomaAtual;
     public int indiceFaseAtual = 0;
     public int ondaAtual = 1;
+    public bool tentativaEmAndamento = false;
+
     private bool trocandoDeOnda = false;
     private FaseData DadosFaseAtual => biomaAtual.fasesDoBioma[indiceFaseAtual];
 
@@ -33,11 +35,12 @@ public class BattleController : MonoBehaviour
         }
     }
 
-    private void IniciarFase()
+    public void IniciarFase()
     {
         ondaAtual = 1;
+        tentativaEmAndamento = true;
         if (playerTeamManager != null) playerTeamManager.InstanciarEquipe();
-        parallaxManager.SetupParallax(DadosFaseAtual);
+        if (parallaxManager != null) parallaxManager.SetupParallax(DadosFaseAtual);
         IniciarNovaOnda();
     }
 
@@ -45,10 +48,8 @@ public class BattleController : MonoBehaviour
     {
         spawnManager.SpawnarOnda(DadosFaseAtual, ondaAtual);
         estadoAtual = EstadoBatalha.Marchando;
-        parallaxManager.isMoving = true;
+        if (parallaxManager != null) parallaxManager.isMoving = true;
     }
-
-    // --- SISTEMAS DE VISÃO (TARGETING) ---
 
     private GameObject ObterAlvoMaisProximo(GameObject unidadeOrigem, List<GameObject> listaAlvos)
     {
@@ -56,7 +57,7 @@ public class BattleController : MonoBehaviour
         float menorDistancia = float.MaxValue;
         foreach (GameObject alvo in listaAlvos)
         {
-            if (alvo == null) continue;
+            if (alvo == null || !alvo.activeInHierarchy) continue;
             float dist = Mathf.Abs(unidadeOrigem.transform.position.x - alvo.transform.position.x);
             if (dist < menorDistancia)
             {
@@ -73,7 +74,7 @@ public class BattleController : MonoBehaviour
         float menorPorcentagem = float.MaxValue;
         foreach (GameObject aliado in equipe)
         {
-            if (aliado == null) continue;
+            if (aliado == null || !aliado.activeInHierarchy) continue;
             UnidadeEmBatalha un = aliado.GetComponent<UnidadeEmBatalha>();
             float porcentagemHP = un.hpAtual / un.hpMaximo;
             if (porcentagemHP < menorPorcentagem)
@@ -85,39 +86,39 @@ public class BattleController : MonoBehaviour
         return aliadoNecessitado;
     }
 
-    private void LimparMortos()
+    private void LimparMortosAbsolutos()
     {
-        spawnManager.activeEnemies.RemoveAll(item => item == null);
-        playerTeamManager.heroisAtivos.RemoveAll(item => item == null);
+        if (spawnManager != null && spawnManager.inimigosInstanciados != null)
+            spawnManager.inimigosInstanciados.RemoveAll(item => item == null);
+
+        if (playerTeamManager != null && playerTeamManager.heroisInstanciados != null)
+            playerTeamManager.heroisInstanciados.RemoveAll(item => item == null);
     }
 
     private void LidarComMarcha()
     {
-        LimparMortos();
+        LimparMortosAbsolutos();
         bool encontrouInimigo = false;
 
-        // 1. INIMIGOS AVANÇAM (Da esquerda para a direita)
-        foreach (GameObject inimigo in spawnManager.activeEnemies)
+        foreach (GameObject inimigo in spawnManager.inimigosAtivos)
         {
             if (inimigo == null) continue;
             UnidadeEmBatalha unidade = inimigo.GetComponent<UnidadeEmBatalha>();
 
             inimigo.transform.Translate(Vector3.right * unidade.velocidade * Time.deltaTime, Space.World);
-            unidade.animador.isWalking = true;
+            if (unidade.animador != null) unidade.animador.isWalking = true;
 
             GameObject alvo = ObterAlvoMaisProximo(inimigo, playerTeamManager.heroisAtivos);
             if (alvo != null && Mathf.Abs(inimigo.transform.position.x - alvo.transform.position.x) <= unidade.alcance)
                 encontrouInimigo = true;
         }
 
-        // 2. HERÓIS RECUAM / MOONWALK (Da esquerda para a direita, rumo à base)
         foreach (GameObject heroi in playerTeamManager.heroisAtivos)
         {
             if (heroi == null) continue;
             UnidadeEmBatalha unidade = heroi.GetComponent<UnidadeEmBatalha>();
-            unidade.animador.isWalking = true;
+            if (unidade.animador != null) unidade.animador.isWalking = true;
 
-            // Se o herói tiver avançado (X ficou menor que a base), ele desliza de volta para a base
             if (heroi.transform.position.x < unidade.posicaoBase.x)
             {
                 heroi.transform.position = Vector3.MoveTowards(
@@ -127,45 +128,44 @@ public class BattleController : MonoBehaviour
                 );
             }
 
-            GameObject alvo = ObterAlvoMaisProximo(heroi, spawnManager.activeEnemies);
+            GameObject alvo = ObterAlvoMaisProximo(heroi, spawnManager.inimigosAtivos);
             if (alvo != null && Mathf.Abs(heroi.transform.position.x - alvo.transform.position.x) <= unidade.alcance)
                 encontrouInimigo = true;
         }
 
-        // Só para de marchar se encontrar inimigo E não estiver naquele intervalo de descanso
         if (encontrouInimigo && !trocandoDeOnda)
         {
             estadoAtual = EstadoBatalha.Combate;
-            parallaxManager.isMoving = false;
+            if (parallaxManager != null) parallaxManager.isMoving = false;
         }
     }
+
     private void LidarComCombate()
     {
-        LimparMortos();
+        LimparMortosAbsolutos();
 
-        // GATILHO: Se matámos todos e não estamos a trocar de onda, começa o delay!
-        if (spawnManager.activeEnemies.Count == 0 && !trocandoDeOnda)
+        if (playerTeamManager.heroisAtivos.Count == 0)
+        {
+            if (estadoAtual != EstadoBatalha.Derrota) StartCoroutine(RotinaDerrota());
+            return;
+        }
+
+        if (spawnManager.inimigosAtivos.Count == 0 && !trocandoDeOnda)
         {
             StartCoroutine(RotinaPausaEntreOndas());
             return;
         }
 
-        if (playerTeamManager.heroisAtivos.Count == 0)
-        {
-            Debug.Log("[BATTLE] Game Over!");
-            estadoAtual = EstadoBatalha.VitoriaOnda;
-            return;
-        }
-
-        ProcessarTurnoEquipe(spawnManager.activeEnemies, playerTeamManager.heroisAtivos, spawnManager.activeEnemies);
-        ProcessarTurnoEquipe(playerTeamManager.heroisAtivos, spawnManager.activeEnemies, playerTeamManager.heroisAtivos);
+        ProcessarTurnoEquipe(spawnManager.inimigosAtivos, playerTeamManager.heroisAtivos);
+        ProcessarTurnoEquipe(playerTeamManager.heroisAtivos, spawnManager.inimigosAtivos);
     }
 
-    private void ProcessarTurnoEquipe(List<GameObject> atacantes, List<GameObject> inimigos, List<GameObject> aliados)
+    // Simplificado para injetar os Aliados e Inimigos dinamicamente com base em quem está atacando
+    private void ProcessarTurnoEquipe(List<GameObject> atacantes, List<GameObject> inimigos)
     {
         foreach (GameObject go in atacantes)
         {
-            if (go == null) continue;
+            if (go == null || !go.activeInHierarchy) continue;
             UnidadeEmBatalha unidade = go.GetComponent<UnidadeEmBatalha>();
             GameObject inimigoAlvo = ObterAlvoMaisProximo(go, inimigos);
 
@@ -173,83 +173,90 @@ public class BattleController : MonoBehaviour
             {
                 float dist = Mathf.Abs(go.transform.position.x - inimigoAlvo.transform.position.x);
 
-                // SE ESTIVER FORA DE ALCANCE: Anda na direção do inimigo!
                 if (dist > unidade.alcance)
                 {
-                    unidade.animador.isWalking = true;
-
-                    // Calcula se tem que andar para a direita (+1) ou esquerda (-1) para chegar ao alvo
+                    if (unidade.animador != null) unidade.animador.isWalking = true;
                     float direcao = Mathf.Sign(inimigoAlvo.transform.position.x - go.transform.position.x);
                     go.transform.Translate(Vector3.right * direcao * unidade.velocidade * Time.deltaTime, Space.World);
                 }
-                // SE ESTIVER NO ALCANCE: Para e ataca
                 else
                 {
-                    unidade.animador.isWalking = false;
+                    if (unidade.animador != null) unidade.animador.isWalking = false;
                     if (unidade.PodeAgir())
                     {
-                        ExecutarAcao(unidade, inimigoAlvo, aliados, inimigos);
+                        ExecutarAcao(unidade, inimigoAlvo);
                     }
                 }
             }
         }
     }
 
-    // --- CÉREBRO DAS MAGIAS ---
-
-    private void ExecutarAcao(UnidadeEmBatalha unidade, GameObject inimigoPadrao, List<GameObject> aliados, List<GameObject> inimigos)
+    private void ExecutarAcao(UnidadeEmBatalha unidade, GameObject inimigoPadrao)
     {
-        HabilidadeData magia = unidade.ObterHabilidadePronta();
+        // PONTO 4: Identificação de Equipe (Agnóstico)
+        bool ehHeroiJogador = playerTeamManager.heroisAtivos.Contains(unidade.gameObject);
 
-        // 1. TEM MAGIA PRONTA? USA MAGIA.
+        List<GameObject> meusAliadosVivos = ehHeroiJogador ? playerTeamManager.heroisAtivos : spawnManager.inimigosAtivos;
+        List<GameObject> meusAliadosMortos = ehHeroiJogador ? playerTeamManager.heroisMortos : spawnManager.inimigosMortos;
+
+        HabilidadeData magia = unidade.ObterHabilidadePronta(meusAliadosVivos, meusAliadosMortos);
+
         if (magia != null)
         {
+            // PONTO 5: Cobra PA e Reseta Cronômetro primeiro (Genérico)
+            unidade.ConsumirCustoECooldown(magia);
+
             float valorEfeito = CalcularValorEfeito(unidade, magia);
 
-            // TIPO: Dano ou Ataque Múltiplo
+            // AÇÃO: DANO
             if (magia.tipo == HabilidadeData.TipoHabilidade.DanoSingular || magia.tipo == HabilidadeData.TipoHabilidade.AtaqueMultiplo)
             {
                 int golpes = magia.tipo == HabilidadeData.TipoHabilidade.AtaqueMultiplo ? magia.numeroDeGolpes : 1;
                 UnidadeEmBatalha alvoUnidade = inimigoPadrao.GetComponent<UnidadeEmBatalha>();
-
-                for (int i = 0; i < golpes; i++)
-                {
-                    if (alvoUnidade.hpAtual > 0) alvoUnidade.ReceberDano(valorEfeito);
-                }
-                Debug.Log($"[MAGIA] {unidade.dadosOriginais.nomeCarta} usou {magia.nomeHabilidade}! ({golpes}x de {valorEfeito} dano)");
+                unidade.DispararMagiaDeDano(alvoUnidade, valorEfeito, golpes);
             }
-            // TIPO: Cura
+            // AÇÃO: CURA
             else if (magia.tipo == HabilidadeData.TipoHabilidade.Cura)
             {
                 if (magia.alvo == HabilidadeData.AlvoHabilidade.TodosAliados)
                 {
-                    foreach (GameObject aliado in aliados)
-                    {
-                        if (aliado != null) aliado.GetComponent<UnidadeEmBatalha>().ReceberCura(valorEfeito);
-                    }
-                    Debug.Log($"[MAGIA] {unidade.dadosOriginais.nomeCarta} curou TODOS os aliados em {valorEfeito} HP!");
+                    foreach (GameObject aliado in meusAliadosVivos)
+                        aliado.GetComponent<UnidadeEmBatalha>().ReceberCura(valorEfeito);
                 }
                 else
                 {
-                    GameObject alvoCura = magia.alvo == HabilidadeData.AlvoHabilidade.SiMesmo ? unidade.gameObject : ObterAliadoMenorHP(aliados);
-                    if (alvoCura != null)
-                    {
-                        alvoCura.GetComponent<UnidadeEmBatalha>().ReceberCura(valorEfeito);
-                        Debug.Log($"[MAGIA] {unidade.dadosOriginais.nomeCarta} curou {alvoCura.name} em {valorEfeito} HP!");
-                    }
+                    GameObject alvoCura = magia.alvo == HabilidadeData.AlvoHabilidade.SiMesmo ? unidade.gameObject : ObterAliadoMenorHP(meusAliadosVivos);
+                    if (alvoCura != null) alvoCura.GetComponent<UnidadeEmBatalha>().ReceberCura(valorEfeito);
                 }
             }
-            // (Buffs e Reviver serão tratados aqui futuramente)
-
-            unidade.RegistrarUsoHabilidade(magia);
+            // AÇÃO: BUFF (PONTO 3: Integrado)
+            else if (magia.tipo == HabilidadeData.TipoHabilidade.BuffStatus)
+            {
+                if (magia.alvo == HabilidadeData.AlvoHabilidade.TodosAliados)
+                {
+                    foreach (GameObject aliado in meusAliadosVivos)
+                        aliado.GetComponent<UnidadeEmBatalha>().AplicarBuff(magia.statusAlterado, valorEfeito, magia.duracaoBuff);
+                }
+                else
+                {
+                    GameObject alvoBuff = magia.alvo == HabilidadeData.AlvoHabilidade.SiMesmo ? unidade.gameObject : ObterAliadoMenorHP(meusAliadosVivos);
+                    if (alvoBuff != null) alvoBuff.GetComponent<UnidadeEmBatalha>().AplicarBuff(magia.statusAlterado, valorEfeito, magia.duracaoBuff);
+                }
+            }
+            // AÇÃO: RESSURREIÇÃO (PONTO 4)
+            else if (magia.tipo == HabilidadeData.TipoHabilidade.Reviver)
+            {
+                if (meusAliadosMortos.Count > 0)
+                {
+                    GameObject alvoMorto = meusAliadosMortos[0]; // Futuramente: Podemos ordenar por level/prioridade
+                    alvoMorto.GetComponent<UnidadeEmBatalha>().Ressuscitar(magia.multiplicadorOuValorBase);
+                }
+            }
         }
-        // 2. NÃO TEM MAGIA? ATAQUE BÁSICO.
         else
         {
             UnidadeEmBatalha alvoUnidade = inimigoPadrao.GetComponent<UnidadeEmBatalha>();
-            alvoUnidade.ReceberDano(unidade.danoAtual);
-            unidade.RegistrarAtaqueBasico();
-            // Debug.Log($"[ATAQUE] {unidade.dadosOriginais.nomeCarta} causou {unidade.danoAtual} dano básico.");
+            unidade.ExecutarAtaqueBasico(alvoUnidade);
         }
     }
 
@@ -257,47 +264,42 @@ public class BattleController : MonoBehaviour
     {
         switch (magia.escalaDoValor)
         {
-            case HabilidadeData.TipoEscala.Fixo:
-                return magia.multiplicadorOuValorBase;
-            case HabilidadeData.TipoEscala.PorcentagemDano:
-                return conjurador.danoAtual * magia.multiplicadorOuValorBase;
-            case HabilidadeData.TipoEscala.PorcentagemHPMaximo:
-                return conjurador.hpMaximo * magia.multiplicadorOuValorBase;
-            default:
-                return magia.multiplicadorOuValorBase;
+            case HabilidadeData.TipoEscala.Fixo: return magia.multiplicadorOuValorBase;
+            case HabilidadeData.TipoEscala.PorcentagemDano: return conjurador.danoAtual * magia.multiplicadorOuValorBase;
+            case HabilidadeData.TipoEscala.PorcentagemHPMaximo: return conjurador.hpMaximo * magia.multiplicadorOuValorBase;
+            default: return magia.multiplicadorOuValorBase;
         }
     }
-
-    // --- CONTROLE DE ONDAS ---
 
     private System.Collections.IEnumerator RotinaPausaEntreOndas()
     {
         trocandoDeOnda = true;
-        spawnManager.LimparInimigos(); // Garante que a lista está vazia
+        spawnManager.LimparInimigos();
 
-        // 1. Liberta os heróis para recuarem e o cenário rolar
         estadoAtual = EstadoBatalha.Marchando;
-        parallaxManager.isMoving = true;
+        if (parallaxManager != null) parallaxManager.isMoving = true;
 
-        // 2. Espera 2.5 segundos (pode ajustar este tempo como preferir!)
         yield return new WaitForSeconds(2.5f);
 
-        // 3. Avança para a próxima onda ou finaliza a fase
         ondaAtual++;
-        if (ondaAtual > DadosFaseAtual.totalOndas)
-        {
-            VencerFase();
-        }
-        else
-        {
-            IniciarNovaOnda();
-        }
+        if (ondaAtual > DadosFaseAtual.totalOndas) VencerFase();
+        else IniciarNovaOnda();
 
         trocandoDeOnda = false;
     }
 
+    private System.Collections.IEnumerator RotinaDerrota()
+    {
+        estadoAtual = EstadoBatalha.Derrota;
+        if (parallaxManager != null) parallaxManager.isMoving = false;
+
+        yield return new WaitForSeconds(3.0f);
+        IniciarFase();
+    }
+
     private void VencerFase()
     {
+        tentativaEmAndamento = false;
         indiceFaseAtual++;
         if (indiceFaseAtual >= biomaAtual.fasesDoBioma.Length)
         {
@@ -306,4 +308,6 @@ public class BattleController : MonoBehaviour
         }
         IniciarFase();
     }
+
+    public void RepetirFaseAtual() => IniciarFase();
 }

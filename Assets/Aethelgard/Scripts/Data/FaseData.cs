@@ -5,7 +5,7 @@ public class FaseData : ScriptableObject
 {
     [Header("Configuração da Fase")]
     public string nomeFase = "Fase 1-1";
-    public int totalOndas = 5;
+    public int totalOndas = 10;
 
     [Tooltip("Se marcado, a última onda terá o Boss Final. Se desmarcado, terá o Miniboss.")]
     public bool isFaseDoBossFinal = false;
@@ -25,6 +25,13 @@ public class FaseData : ScriptableObject
 
     public MonstroData miniboss;
     public MonstroData bossFinal;
+
+    [Header("Acompanhantes do Boss")]
+    [Tooltip("Quantidade de lacaios que acompanham o Boss/Miniboss na Onda 10.")]
+    public int quantidadeAcompanhantesBoss = 2;
+
+    [Tooltip("Se preenchido, utiliza este monstro específico como lacaio. Se vazio, sorteia entre os inimigosRegulares.")]
+    public MonstroData lacaioBossFixo;
 
     [Header("Matemática de Escalonamento")]
     public int quantidadeInicialInimigos = 2;

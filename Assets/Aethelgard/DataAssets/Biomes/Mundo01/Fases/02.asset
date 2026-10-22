@@ -29,5 +29,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: beec4b3e50b702c459c2a2ccbb3a5e75, type: 2}
   miniboss: {fileID: 11400000, guid: 60d0ee6ebf92f3c448171b014de04c7e, type: 2}
   bossFinal: {fileID: 11400000, guid: 739ee5e1454a48a4e8d17399e2d9b68d, type: 2}
+  quantidadeAcompanhantesBoss: 2
+  lacaioBossFixo: {fileID: 0}
   quantidadeInicialInimigos: 2
   acrescimoPorOnda: 2

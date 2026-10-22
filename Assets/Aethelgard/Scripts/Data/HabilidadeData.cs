@@ -8,7 +8,6 @@ public class HabilidadeData : ScriptableObject
     [TextArea(2, 3)] public string descricao;
 
     [Header("Regras de Conjuração")]
-    [Tooltip("Quanto de PA (Energia) custa para usar esta magia?")]
     public float custoPA = 50f;
 
     public enum TipoHabilidade { DanoSingular, AtaqueMultiplo, Cura, BuffStatus, Reviver }
@@ -17,23 +16,21 @@ public class HabilidadeData : ScriptableObject
     public enum AlvoHabilidade { InimigoMaisProximo, AliadoMenorHP, SiMesmo, TodosAliados }
     public AlvoHabilidade alvo;
 
-    [Header("Matemática do Efeito")]
-    [Tooltip("O valor do efeito será um número fixo ou vai escalar com os atributos do monstro?")]
-    public TipoEscala escalaDoValor;    
-    public enum TipoEscala { Fixo, PorcentagemDano, PorcentagemHPMaximo }
+    [Header("Inteligência Artificial (IA)")]
+    public float tempoDeRecarga = 0f;
+    public CondicaoDeUso condicaoUso = CondicaoDeUso.Sempre;
 
-    [Tooltip("Se for Fixo, 100 = 100 de dano/cura. Se for Porcentagem, 1.5 = 150% do atributo escolhido acima.")]
+    // PONTO 4: Nova condição para a IA identificar a necessidade de Reviver
+    public enum CondicaoDeUso { Sempre, MeuHPAbaixoDe50, AliadoComHPAbaixoDe50, AliadoMorto }
+
+    [Header("Matemática do Efeito")]
+    public TipoEscala escalaDoValor;
+    public enum TipoEscala { Fixo, PorcentagemDano, PorcentagemHPMaximo }
     public float multiplicadorOuValorBase = 1.5f;
 
-    [Header("Configurações Específicas (Ataque Múltiplo)")]
-    [Tooltip("Quantos golpes seguidos a unidade vai dar?")]
+    [Header("Configurações Específicas")]
     public int numeroDeGolpes = 2;
-
-    [Header("Configurações Específicas (Buffs)")]
-    [Tooltip("Qual atributo aliado será melhorado?")]
     public StatusBuff statusAlterado;
-    public enum StatusBuff { Nenhum, DanoFisico, VelocidadeAtaque, VelocidadeMovimento, Armadura }    
-
-    [Tooltip("Quantos segundos o bónus ficará ativo?")]
+    public enum StatusBuff { Nenhum, DanoFisico, VelocidadeAtaque, VelocidadeMovimento, Armadura }
     public float duracaoBuff = 5f;
 }

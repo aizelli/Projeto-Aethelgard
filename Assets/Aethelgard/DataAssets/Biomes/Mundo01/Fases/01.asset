@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: 01
   m_EditorClassIdentifier: Assembly-CSharp::FaseData
   nomeFase: Fase 1-1
-  totalOndas: 10
+  totalOndas: 5
   isFaseDoBossFinal: 0
   prefabCeu: {fileID: 5196355569608721268, guid: ad8a84bfde2b14b49bdf24639ae8a416, type: 3}
   larguraCeu: 30
@@ -29,5 +29,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 739ee5e1454a48a4e8d17399e2d9b68d, type: 2}
   miniboss: {fileID: 11400000, guid: beec4b3e50b702c459c2a2ccbb3a5e75, type: 2}
   bossFinal: {fileID: 11400000, guid: beec4b3e50b702c459c2a2ccbb3a5e75, type: 2}
+  quantidadeAcompanhantesBoss: 2
+  lacaioBossFixo: {fileID: 0}
   quantidadeInicialInimigos: 2
   acrescimoPorOnda: 2

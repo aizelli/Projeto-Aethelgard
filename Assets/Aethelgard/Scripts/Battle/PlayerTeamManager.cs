@@ -4,12 +4,46 @@ using UnityEngine;
 public class PlayerTeamManager : MonoBehaviour
 {
     [Header("Moldes")]
-    public GameObject prefabTokenBase; // O nosso Prefab Universal
+    public GameObject prefabTokenBase;
     public Transform pontoSpawnHerois;
 
     [Header("A Sua Equipa")]
     public List<MonstroData> equipeAtual;
-    public List<GameObject> heroisAtivos = new List<GameObject>();
+    public List<GameObject> heroisInstanciados = new List<GameObject>(); // Mudamos o nome para refletir que eles existem, vivos ou mortos
+
+    // Propriedade que filtra rapidamente quem está vivo para a marcha e combate normal
+    public List<GameObject> heroisAtivos
+    {
+        get
+        {
+            List<GameObject> vivos = new List<GameObject>();
+            foreach (GameObject heroi in heroisInstanciados)
+            {
+                if (heroi != null && heroi.activeInHierarchy)
+                {
+                    vivos.Add(heroi);
+                }
+            }
+            return vivos;
+        }
+    }
+
+    // P02.03: Propriedade que filtra rapidamente quem precisa de ser ressuscitado
+    public List<GameObject> heroisMortos
+    {
+        get
+        {
+            List<GameObject> mortos = new List<GameObject>();
+            foreach (GameObject heroi in heroisInstanciados)
+            {
+                if (heroi != null && !heroi.activeInHierarchy)
+                {
+                    mortos.Add(heroi);
+                }
+            }
+            return mortos;
+        }
+    }
 
     public void InstanciarEquipe()
     {
@@ -20,17 +54,14 @@ public class PlayerTeamManager : MonoBehaviour
         {
             if (equipeAtual[i] == null) continue;
 
-            // 1. Instancia o Prefab (Avançando para a esquerda no spawn)
             Vector3 posicaoSpawn = pontoSpawnHerois.position - new Vector3(offset, 0, 0);
             GameObject novoHeroi = Instantiate(prefabTokenBase, posicaoSpawn, Quaternion.identity);
             novoHeroi.name = "Heroi_" + equipeAtual[i].nomeCarta;
 
-            // 2. Configura o Visual e inverte o eixo X
             SpriteRenderer sr = novoHeroi.GetComponent<SpriteRenderer>();
             sr.sprite = equipeAtual[i].spriteToken;
-            sr.flipX = true; // Heróis virados para a direita
+            sr.flipX = true;
 
-            // 3. Injeta a Inteligência e a Matemática (Nível 5 provisório)
             UnidadeEmBatalha unidade = novoHeroi.GetComponent<UnidadeEmBatalha>();
             TokenAnimator animador = novoHeroi.GetComponent<TokenAnimator>();
 
@@ -38,17 +69,17 @@ public class PlayerTeamManager : MonoBehaviour
             unidade.posicaoBase = posicaoSpawn;
             animador.IniciarEfeitoSurgimento();
 
-            heroisAtivos.Add(novoHeroi);
-            offset += 1.5f;
+            heroisInstanciados.Add(novoHeroi);
+            offset += 0.6f;
         }
     }
 
     public void LimparEquipe()
     {
-        foreach (GameObject heroi in heroisAtivos)
+        foreach (GameObject heroi in heroisInstanciados)
         {
             if (heroi != null) Destroy(heroi);
         }
-        heroisAtivos.Clear();
+        heroisInstanciados.Clear();
     }
 }

@@ -20,6 +20,8 @@ MonoBehaviour:
   custoPA: 30
   tipo: 0
   alvo: 0
+  tempoDeRecarga: 2
+  condicaoUso: 0
   escalaDoValor: 1
   multiplicadorOuValorBase: 1.3
   numeroDeGolpes: 1

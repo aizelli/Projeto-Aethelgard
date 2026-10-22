@@ -31,6 +31,6 @@ MonoBehaviour:
   paGeradoPorAtaque: 20
   habilidadesAtivas:
   - habilidade: {fileID: 11400000, guid: 803baa66d7a5a1c45b86b87cb03a291c, type: 2}
-    prioridade: 8
+    prioridade: 1
   - habilidade: {fileID: 11400000, guid: 877886a5085f40044ab2dbd9f120c2c5, type: 2}
-    prioridade: 10
+    prioridade: 5

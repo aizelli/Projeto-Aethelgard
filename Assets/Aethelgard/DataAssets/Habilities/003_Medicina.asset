@@ -16,7 +16,9 @@ MonoBehaviour:
   descricao: Cura 25% da vida base do aliado mais fraco.
   custoPA: 50
   tipo: 2
-  alvo: 1
+  alvo: 2
+  tempoDeRecarga: 5
+  condicaoUso: 1
   escalaDoValor: 2
   multiplicadorOuValorBase: 0.25
   numeroDeGolpes: 0
